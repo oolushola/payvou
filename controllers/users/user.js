@@ -6,6 +6,30 @@ const dotenv = require('dotenv').config()
 const { validationResult } = require('express-validator')
 const { successResponse, errorResponse } = require('../../middlewares/responses')
 const UserModel = require('../../models/user')
+const multer = require('multer')
+const fs = require('fs')
+const path = require('path')
+
+const fileStorage = multer.diskStorage({
+  filename: (req, file, cb) => {
+    cb(null, new Date().toISOString()+'-'+file.originalname)
+  },
+  destination: (req, file, cb) => {
+    cb(null, 'public/images')
+  }
+})
+
+const fileFilter = (req, file, cb) => {
+  if(file.mimetype === 'image/jpg' || file.mimetype === 'image/png' ) {
+    console.log('True')
+    cb(null, true)
+  }
+  else {
+    cb(null, false)
+  }
+}
+
+const photoUpload = multer({ storage: fileStorage, fileFilter: fileFilter }).single('photo')
 
 const transporter = nodemailer.createTransport(
   new transport({
@@ -15,7 +39,7 @@ const transporter = nodemailer.createTransport(
   })
 )
 
-class Users {
+class userController {
   static async login(req, res, next) {
     const errors = validationResult(req)
     if(!errors.isEmpty()) {
@@ -52,11 +76,10 @@ class Users {
         'login successful',
         token
       )
-
     }
     catch(err) {
       errorResponse(
-        500, res, 'internal server error', err
+        500, res, 'internal server error', err.message
       )
     }
   }
@@ -94,7 +117,7 @@ class Users {
         500,
         res,
         'internal server error',
-        err,
+        err.message,
       )
     }
   }
@@ -156,10 +179,50 @@ class Users {
     }
     catch(err) {
       errorResponse(
-        403, res, 'invalid token', err
+        403, res, 'invalid token', err.message
       )
     }
   }
+
+  static async updatePhoto(req, res, next) {
+    console.log(req.file)
+    const photo = req.file
+    if(!photo) {
+      return errorResponse(
+        422, res, 'photo is required', {}
+      )
+    }
+    try {
+      const user = await UserModel.findOne({ email: req.email }).select('photo')
+      if(user.photo) {
+        removePhoto(user.photo)
+      }
+      user.photo = photo.path
+      const result = await user.saves()
+      successResponse(
+        200, res, result, 'photo uploaded'
+      )
+    }
+    catch(err) {
+      errorResponse(
+        500, res, 'internal server error', err.message
+      )
+    }
+    
+  }
 }
 
-module.exports = Users
+const removePhoto = (photoPath) => {
+  const photoDir = path.join(__dirname, '..', '..', photoPath)
+  return fs.unlink(photoDir, (err, data) => {
+    if(err) {
+      console.log('ERROR DELETE PHOTO')
+    }
+    console.log('PHOTO UPDATED>...')
+  })
+}
+
+module.exports = {
+  userController,
+  photoUpload
+}

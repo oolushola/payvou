@@ -1,10 +1,9 @@
 const express = require('express')
 const { body } = require('express-validator')
-const userController = require('../controllers/users/user')
+const { userController, photoUpload } = require('../controllers/users/user')
+const verifyToken = require('../middlewares/handlers/verify')
 const userModel = require('../models/user')
 const router = express.Router()
-
-
 
 router.post(
   '/login',
@@ -80,6 +79,13 @@ router.patch(
     .trim()
   ],
   userController.resetPassword
+)
+
+router.patch(
+  '/photo-upload',
+  verifyToken,
+  photoUpload,
+  userController.updatePhoto
 )
 
 

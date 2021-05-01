@@ -1,14 +1,13 @@
 const express = require('express')
 const bodyParser = require('body-parser')
-const mongoose = require('mongoose')
 const dotenv = require('dotenv').config()
 const connectDb = require('./middlewares/database')
 const routes = require('./routes/routes')
 const path = require('path')
+const multer = require('multer')
 
 const PORT = process.env.PORT || 3500
 const BASEURL = process.env.BASE_URL
-
 
 const app = express()
 
@@ -26,8 +25,6 @@ app.use((req, res, next) => {
 app.use(`${BASEURL}`, routes)
 
 app.use((error, req, res, next) => {
-  console.log(error)
-  console.log('Here')
   const status = error.statusCode || 500
   const errorData = error.errorData
   const message = error.msg
